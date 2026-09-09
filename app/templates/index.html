@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>お薬管理</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="app-shell" aria-live="polite">
+    <header class="app-header">
+      <h1><span aria-hidden="true">💊</span> お薬管理</h1>
+      <time id="today-label" datetime="">読み込み中</time>
+    </header>
+
+    <div id="message" class="message" role="status" aria-live="polite"></div>
+
+    <section class="dose-grid" aria-label="服薬状況">
+      <article class="dose-card" data-period="morning">
+        <h2><span aria-hidden="true">☀️</span> 朝のお薬</h2>
+        <div class="dose-status not-taken" id="morning-status">
+          <div class="status-line">
+            <span class="status-mark" aria-hidden="true">🔴</span>
+            <span class="status-text">未服薬</span>
+          </div>
+          <div class="dose-time" id="morning-time" aria-label="服薬時刻">--:--</div>
+        </div>
+        <button type="button" class="action-button take-button" data-period="morning">飲みました</button>
+      </article>
+
+      <article class="dose-card" data-period="night">
+        <h2><span aria-hidden="true">🌙</span> 夜のお薬</h2>
+        <div class="dose-status not-taken" id="night-status">
+          <div class="status-line">
+            <span class="status-mark" aria-hidden="true">🔴</span>
+            <span class="status-text">未服薬</span>
+          </div>
+          <div class="dose-time" id="night-time" aria-label="服薬時刻">--:--</div>
+        </div>
+        <button type="button" class="action-button take-button" data-period="night">飲みました</button>
+      </article>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

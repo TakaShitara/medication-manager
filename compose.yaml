@@ -1,0 +1,13 @@
+services:
+  medication-manager:
+    build: .
+    container_name: medication-manager
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    environment:
+      TZ: ${TZ:-Asia/Tokyo}
+      DATA_DIR: /app/data
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+    volumes:
+      - /srv/medication-manager/data:/app/data
