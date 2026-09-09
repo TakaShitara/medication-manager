@@ -1,5 +1,8 @@
+import http.client
 import json
+import logging
 import os
+import re
 import tempfile
 import threading
 import urllib.error
@@ -8,7 +11,7 @@ from copy import deepcopy
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from flask import Flask, abort, jsonify, render_template, request
+from flask import Flask, abort, current_app, jsonify, render_template, request
 
 
 PERIODS = {
@@ -17,6 +20,12 @@ PERIODS = {
 }
 
 WEEKDAYS_JA = ["月", "火", "水", "木", "金", "土", "日"]
+MAX_DISCORD_LOG_BODY_BYTES = 1024
+MAX_DISCORD_LOG_TEXT_CHARS = 1000
+URL_PATTERN = re.compile(r"https?://[^\s\"'<>]+")
+WEBHOOK_PATH_PATTERN = re.compile(r"/?api/webhooks/[^\s\"'<>]+")
+
+logger = logging.getLogger(__name__)
 
 
 def default_state(date_text):
@@ -168,23 +177,83 @@ class MedicationStore:
             raise ValueError("unknown period")
 
 
+def get_discord_logger():
+    try:
+        return current_app.logger
+    except RuntimeError:
+        return logger
+
+
+def redact_log_value(value):
+    text = str(value)
+    text = URL_PATTERN.sub("[redacted-url]", text)
+    text = WEBHOOK_PATH_PATTERN.sub("[redacted-webhook-path]", text)
+    if len(text) > MAX_DISCORD_LOG_TEXT_CHARS:
+        return f"{text[:MAX_DISCORD_LOG_TEXT_CHARS]}... (truncated)"
+    return text
+
+
+def read_response_body_for_log(response):
+    try:
+        body = response.read(MAX_DISCORD_LOG_BODY_BYTES)
+    except OSError as error:
+        return f"<failed to read response body: {redact_log_value(error)}>"
+
+    if not body:
+        return ""
+
+    return redact_log_value(body.decode("utf-8", errors="replace"))
+
+
+def log_discord_http_failure(status_code, reason, response_body):
+    details = f"status={status_code} reason={redact_log_value(reason or '')}"
+    if response_body:
+        details = f"{details} response_body={response_body}"
+
+    get_discord_logger().warning("Discord webhook notification failed: %s", details)
+
+
+def log_discord_exception(error):
+    reason = getattr(error, "reason", None)
+    details = f"exception={error.__class__.__name__} message={redact_log_value(error)}"
+    if reason is not None:
+        details = f"{details} reason={redact_log_value(reason)}"
+
+    get_discord_logger().warning("Discord webhook notification failed: %s", details)
+
+
 def send_discord_message(webhook_url, content):
+    webhook_url = (webhook_url or "").strip()
     if not webhook_url:
+        get_discord_logger().warning("Discord webhook notification skipped: DISCORD_WEBHOOK_URL is not set.")
         return "Discord Webhookが未設定です"
 
     payload = json.dumps({"content": content}, ensure_ascii=False).encode("utf-8")
-    request_obj = urllib.request.Request(
-        webhook_url,
-        data=payload,
-        headers={"Content-Type": "application/json; charset=utf-8"},
-        method="POST",
-    )
 
     try:
+        request_obj = urllib.request.Request(
+            webhook_url,
+            data=payload,
+            headers={
+                "Content-Type": "application/json; charset=utf-8",
+                "User-Agent": "medication-manager/1.0",
+            },
+            method="POST",
+        )
         with urllib.request.urlopen(request_obj, timeout=5) as response:
-            if response.status < 200 or response.status >= 300:
+            status_code = response.getcode()
+            if status_code < 200 or status_code >= 300:
+                log_discord_http_failure(
+                    status_code,
+                    getattr(response, "reason", ""),
+                    read_response_body_for_log(response),
+                )
                 return "Discordへの通知に失敗しました"
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except urllib.error.HTTPError as error:
+        log_discord_http_failure(error.code, error.reason, read_response_body_for_log(error))
+        return "Discordへの通知に失敗しました"
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError, http.client.InvalidURL) as error:
+        log_discord_exception(error)
         return "Discordへの通知に失敗しました"
 
     return None

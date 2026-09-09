@@ -2,15 +2,49 @@ import json
 import os
 import sys
 import tempfile
+import threading
 import unittest
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from zoneinfo import ZoneInfo
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
-from app.app import create_app  # noqa: E402
+from app.app import create_app, redact_log_value, send_discord_message  # noqa: E402
+
+
+class WebhookHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        content_length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(content_length)
+        self.server.received_requests.append(
+            {
+                "path": self.path,
+                "body": body,
+                "content_type": self.headers.get("Content-Type"),
+                "user_agent": self.headers.get("User-Agent"),
+            }
+        )
+
+        self.send_response(self.server.response_status)
+        self.end_headers()
+        if self.server.response_body:
+            self.wfile.write(self.server.response_body)
+
+    def log_message(self, format, *args):
+        return
+
+
+def start_webhook_server(status, body=b""):
+    server = HTTPServer(("127.0.0.1", 0), WebhookHandler)
+    server.response_status = status
+    server.response_body = body
+    server.received_requests = []
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread
 
 
 class MedicationAppTest(unittest.TestCase):
@@ -146,6 +180,60 @@ class MedicationAppTest(unittest.TestCase):
         self.assertTrue(data["morning"]["taken"])
         self.assertEqual(data["warning"], "Discordへの通知に失敗しました")
         self.assertFalse(data["operation"]["notification"]["sent"])
+
+    def test_discord_sender_treats_204_no_content_as_success(self):
+        server, thread = start_webhook_server(204)
+        try:
+            url = f"http://127.0.0.1:{server.server_address[1]}/api/webhooks/secret-token"
+
+            result = send_discord_message(url, "08:15 💊 朝のお薬を服用しました。")
+
+            self.assertIsNone(result)
+            self.assertEqual(len(server.received_requests), 1)
+            request_body = json.loads(server.received_requests[0]["body"].decode("utf-8"))
+            self.assertEqual(request_body["content"], "08:15 💊 朝のお薬を服用しました。")
+            self.assertEqual(server.received_requests[0]["user_agent"], "medication-manager/1.0")
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+            server.server_close()
+
+    def test_discord_sender_logs_http_error_without_webhook_url(self):
+        body = b'{"message":"bad webhook https://discord.com/api/webhooks/secret/token"}'
+        server, thread = start_webhook_server(500, body)
+        try:
+            url = f"http://127.0.0.1:{server.server_address[1]}/api/webhooks/secret-token"
+
+            with self.assertLogs("app.app", level="WARNING") as logs:
+                result = send_discord_message(url, "test")
+
+            log_text = "\n".join(logs.output)
+            self.assertEqual(result, "Discordへの通知に失敗しました")
+            self.assertIn("status=500", log_text)
+            self.assertIn("[redacted-url]", log_text)
+            self.assertNotIn(url, log_text)
+            self.assertNotIn("secret/token", log_text)
+        finally:
+            server.shutdown()
+            thread.join(timeout=2)
+            server.server_close()
+
+    def test_discord_sender_logs_invalid_url_without_webhook_url(self):
+        webhook_url = "https://discord.com/api/webhooks/secret/token with spaces"
+
+        with self.assertLogs("app.app", level="WARNING") as logs:
+            result = send_discord_message(webhook_url, "test")
+
+        log_text = "\n".join(logs.output)
+        self.assertEqual(result, "Discordへの通知に失敗しました")
+        self.assertIn("exception=", log_text)
+        self.assertNotIn(webhook_url, log_text)
+        self.assertNotIn("secret/token", log_text)
+
+    def test_redact_log_value_masks_urls(self):
+        text = redact_log_value("failed https://discord.com/api/webhooks/secret/token")
+
+        self.assertEqual(text, "failed [redacted-url]")
 
     def test_unknown_period_returns_404_json(self):
         response = self.client.post("/api/take/lunch")
