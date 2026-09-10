@@ -85,6 +85,37 @@ button {
   color: var(--red);
 }
 
+.keepalive-audio {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.keepalive-hint {
+  position: fixed;
+  right: 10px;
+  bottom: 8px;
+  left: 10px;
+  z-index: 10;
+  display: block;
+  padding: 6px 10px;
+  border: 1px solid rgba(240, 184, 74, 0.7);
+  border-radius: 8px;
+  background: rgba(17, 18, 20, 0.92);
+  color: var(--amber);
+  font-size: 0.95rem;
+  line-height: 1.2;
+  font-weight: 800;
+  text-align: center;
+  pointer-events: none;
+}
+
+.keepalive-hint[hidden] {
+  display: none;
+}
+
 .dose-grid {
   flex: 1;
   min-height: 0;
@@ -220,6 +251,14 @@ button {
   .message {
     min-height: 22px;
     font-size: 0.95rem;
+  }
+
+  .keepalive-hint {
+    right: 8px;
+    bottom: 6px;
+    left: 8px;
+    padding: 4px 8px;
+    font-size: 0.82rem;
   }
 
   .dose-card {

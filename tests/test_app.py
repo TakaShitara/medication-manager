@@ -90,6 +90,40 @@ class MedicationAppTest(unittest.TestCase):
         self.assertFalse(data["night"]["taken"])
         self.assertTrue(os.path.exists(self.state_path))
 
+    def test_index_references_keepalive_assets(self):
+        response = self.client.get("/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="keepalive-audio"', html)
+        self.assertIn("keepalive/silence.wav", html)
+        self.assertIn('id="keepalive-hint"', html)
+
+    def test_keepalive_audio_static_file_is_served(self):
+        response = self.client.get("/static/keepalive/silence.wav")
+        try:
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(response.mimetype, {"audio/wav", "audio/x-wav"})
+            self.assertGreater(len(response.data), 44)
+            self.assertEqual(response.data[:4], b"RIFF")
+            self.assertEqual(response.data[8:12], b"WAVE")
+        finally:
+            response.close()
+
+    def test_app_js_contains_keepalive_controls(self):
+        response = self.client.get("/static/app.js")
+        try:
+            js = response.get_data(as_text=True)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("KEEP_ALIVE_RESTART_MS = 60000", js)
+            self.assertIn("keepalive-audio", js)
+            self.assertIn("touchstart", js)
+            self.assertIn("pointerdown", js)
+            self.assertIn("click", js)
+        finally:
+            response.close()
+
     def test_take_is_idempotent_and_notifies_once(self):
         first = self.client.post("/api/take/morning").get_json()
         second = self.client.post("/api/take/morning").get_json()

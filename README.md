@@ -66,6 +66,20 @@ http://サーバーIP:8085
 http://192.168.1.10:8085
 ```
 
+## Echo Show 5 / Silkでの常時表示
+
+Echo Show 5で使う場合は、Silkブラウザを開いて medication-manager のURLへアクセスします。
+
+```text
+http://192.168.1.201:8085
+```
+
+このアプリは、Silkが無操作でホーム画面へ戻る挙動を抑えるために、ページ内で短い無音音声を継続再生するKeep Alive機能を持っています。無音音声はアプリ自身の `/static/keepalive/silence.wav` から配信され、外部CDNや外部Keep Aliveサービスには依存しません。
+
+ブラウザの自動再生制限によりKeep Aliveが自動開始できない場合は、画面を一度タップしてください。服薬ボタンなど通常の画面操作でも開始を試みます。
+
+Keep AliveはSilkのホーム復帰を完全に保証するものではありません。Amazon側やSilkブラウザの仕様変更により、動作しなくなる可能性があります。
+
 ## Discord Webhook設定
 
 `DISCORD_WEBHOOK_URL` にWebhook URLを設定すると、服薬と取消の操作時にDiscordへ通知します。
@@ -139,6 +153,7 @@ PortainerでPull / Re-deploy
 - Discord Webhook通知
 - Discord通知失敗時も服薬状態は保存
 - 約30秒ごとの画面自動更新
+- Echo Show 5 / Silk向けのローカル無音音声Keep Alive
 - 960×480程度の横画面を重視したダークテーマUI
 
 ## トラブルシューティング
