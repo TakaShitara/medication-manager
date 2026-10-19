@@ -127,7 +127,7 @@ button {
 .dose-card {
   min-width: 0;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
   gap: 10px;
   padding: 18px;
   border: 1px solid var(--line);
@@ -145,6 +145,11 @@ button {
 }
 
 .dose-status {
+  width: 100%;
+  padding: 16px;
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
   min-height: 120px;
   display: flex;
   flex-direction: column;
@@ -198,33 +203,22 @@ button {
   color: transparent;
 }
 
-.action-button {
-  width: 100%;
-  min-height: 74px;
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 16px;
-  background: var(--button);
-  color: var(--button-text);
-  font-size: 1.8rem;
-  line-height: 1.1;
-  font-weight: 900;
-  letter-spacing: 0;
-  cursor: pointer;
-  touch-action: manipulation;
+.status-hint {
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.3;
 }
 
-.action-button.cancel-button {
-  border: 1px solid var(--line);
-  background: var(--cancel);
-  color: var(--text);
+.dose-status:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 3px;
 }
 
-.action-button:active {
+.dose-status:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-.action-button:disabled {
+.dose-status:disabled {
   opacity: 0.58;
   cursor: wait;
 }
@@ -284,10 +278,6 @@ button {
     font-size: 1.55rem;
   }
 
-  .action-button {
-    min-height: 60px;
-    font-size: 1.5rem;
-  }
 }
 
 @media (orientation: portrait), (max-width: 760px) {

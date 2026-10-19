@@ -25,26 +25,26 @@
     <section class="dose-grid" aria-label="服薬状況">
       <article class="dose-card" data-period="morning">
         <h2><span aria-hidden="true">☀️</span> 朝のお薬</h2>
-        <div class="dose-status not-taken" id="morning-status">
-          <div class="status-line">
+        <button type="button" class="dose-status not-taken" id="morning-status" data-period="morning" disabled>
+          <span class="status-line">
             <span class="status-mark" aria-hidden="true">🔴</span>
             <span class="status-text">未服薬</span>
-          </div>
-          <div class="dose-time" id="morning-time" aria-label="服薬時刻">--:--</div>
-        </div>
-        <button type="button" class="action-button take-button" data-period="morning">飲みました</button>
+          </span>
+          <span class="dose-time" id="morning-time" aria-label="服薬時刻">--:--</span>
+          <span class="status-hint">タップして服薬を記録</span>
+        </button>
       </article>
 
       <article class="dose-card" data-period="night">
         <h2><span aria-hidden="true">🌙</span> 夜のお薬</h2>
-        <div class="dose-status not-taken" id="night-status">
-          <div class="status-line">
+        <button type="button" class="dose-status not-taken" id="night-status" data-period="night" disabled>
+          <span class="status-line">
             <span class="status-mark" aria-hidden="true">🔴</span>
             <span class="status-text">未服薬</span>
-          </div>
-          <div class="dose-time" id="night-time" aria-label="服薬時刻">--:--</div>
-        </div>
-        <button type="button" class="action-button take-button" data-period="night">飲みました</button>
+          </span>
+          <span class="dose-time" id="night-time" aria-label="服薬時刻">--:--</span>
+          <span class="status-hint">タップして服薬を記録</span>
+        </button>
       </article>
     </section>
   </main>

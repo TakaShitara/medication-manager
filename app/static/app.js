@@ -255,30 +255,33 @@
   }
 
   function renderPeriod(period, entry) {
-    var card = document.querySelector('[data-period="' + period + '"]');
     var status = document.getElementById(period + "-status");
     var text = status.querySelector(".status-text");
     var mark = status.querySelector(".status-mark");
     var time = document.getElementById(period + "-time");
-    var button = card.querySelector("button");
+    var hint = status.querySelector(".status-hint");
 
     if (entry.taken) {
       status.className = "dose-status taken";
       mark.textContent = "🟢";
       text.textContent = "服薬済み";
       time.textContent = entry.time || "--:--";
-      button.textContent = "取り消す";
-      button.className = "action-button cancel-button";
+      hint.textContent = "タップして取り消す";
     } else {
       status.className = "dose-status not-taken";
       mark.textContent = "🔴";
       text.textContent = "未服薬";
       time.textContent = "--:--";
-      button.textContent = "飲みました";
-      button.className = "action-button take-button";
+      hint.textContent = "タップして服薬を記録";
     }
 
-    button.disabled = !!busy[period];
+    status.disabled = !!busy[period];
+    status.setAttribute("aria-busy", busy[period] ? "true" : "false");
+    status.setAttribute("aria-label", (period === "morning" ? "朝のお薬" : "夜のお薬") +
+      (entry.taken ? "：服薬済み " + (entry.time || "") + "。タップして取り消す" : "：未服薬。タップして服薬を記録"));
+    if (busy[period]) {
+      hint.textContent = "送信中…";
+    }
   }
 
   function refreshStatus() {
@@ -295,7 +298,7 @@
     var entry = entryFor(period);
     var endpoint;
 
-    if (busy[period]) {
+    if (!currentState || busy[period]) {
       return;
     }
 
@@ -326,7 +329,7 @@
   }
 
   function bindButtons() {
-    var buttons = document.querySelectorAll(".action-button");
+    var buttons = document.querySelectorAll("button.dose-status");
     for (var i = 0; i < buttons.length; i += 1) {
       buttons[i].addEventListener("click", function (event) {
         postAction(event.currentTarget.getAttribute("data-period"));
